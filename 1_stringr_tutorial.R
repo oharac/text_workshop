@@ -132,6 +132,12 @@ coral_depth <- coral_depth %>%
          n = n()) %>%
   distinct()
 
+### Note, still some issues in here: some fields show size e.g. 1 m diameter;
+### other fields have slightly different formatting of depth descriptors;
+### so it's important to make sure the filters (a) get everything you want
+### and (b) exclude everything you don't want.  We could keep going but
+### we'll move on for now...
+
 ### Play with text a little more; let's look at threats instead.
 ### Combining multiple tests using "or", and adding string start and end characters.
 coral_threats <- coral_spp_narratives %>%
@@ -149,6 +155,7 @@ tolower(crappy_colname) %>%
 
 ### Mention: lookahead and lookbehind assertions, useful to match a pattern 
 ### led by or followed by another pattern; lazy vs. greedy evaluation of quantifiers
+x <- "Everybody's got something to hide except for me and my monkey"
 x %>% str_replace('b.+e', '...')
 x %>% str_replace('b.+?e', '...')
 
@@ -161,4 +168,4 @@ list.files('sample_files')
 list.files('sample_files', pattern = 'jpg$')
 list.files('sample_files', pattern = '[0-9]{4}')
 raster_files <- list.files('sample_files', pattern = '^sample.+[0-9]{4}.tif$') 
-  ### note: should technically be '\\.tif$'
+  ### note: should technically be '\\.tif$' - see if anyone catches that
