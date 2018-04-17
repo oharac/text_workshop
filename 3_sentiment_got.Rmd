@@ -2,8 +2,6 @@
 title: 'Text analysis workshop: Basic sentiment analysis'
 author: "Casey O'Hara"
 output: 
-  pdf_document:
-    toc: false
   html_document:
     toc: false
     toc_depth: 3
@@ -11,6 +9,8 @@ output:
     number_sections: true
     theme: cerulean
     highlight: haddock
+  pdf_document:
+    toc: false
 ---
   
 ``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
@@ -40,9 +40,9 @@ library(pdftools)
 library(tidytext)
 ```
 
-There's a great tutorial on using `tidytext` to do a sentiment analysis on the Lord of the Rings (https://www.r-bloggers.com/sentiment-analysis-of-the-lord-of-the-rings-with-tidytext/), so I adapted that for this workshop, and will use A Game of Thrones as an example.
+There's a great tutorial on using `tidytext` to do a sentiment analysis on the Lord of the Rings (https://www.r-bloggers.com/sentiment-analysis-of-the-lord-of-the-rings-with-tidytext/), so I adapted that for this workshop, and will use _A Game of Thrones_ as an example.
 
-I've also included PDFs I found online for The Hobbit, Harry Potter and the Sorcerer's Stone, and some Kurt Vonnegut short stories, in case you'd like to try one of those instead.
+I've also included PDFs I found online for The Hobbit, Harry Potter and the Sorcerer's Stone, and some Kurt Vonnegut short stories, in case you'd like to try one of those instead.  Some of the pdfs are very poorly set up, to add some realistic challenge...
 
 ## Loading and cleaning the text
 
@@ -125,7 +125,7 @@ text_words <- text_w_ch %>%
 
 For each chapter, add up the positives and negatives (using `dplyr::count()` is handy here), spread them out into columns and take the difference (number of positives - number of negatives).  
 
-Subtracting the overall mean difference from each chapter's difference will center the scores, essentially to account for a writer's general tone.  A Game of Thrones is overall pretty dark, so the average sentiment will be skewed negative... 
+Subtracting the overall mean difference from each chapter's difference will center the scores, essentially to account for a writer's general tone.  _A Game of Thrones_ is overall pretty dark, so the average sentiment will be skewed negative... 
 
 We can also add in a line to order the characters from worst outcome to best outcome.  To do so, we turn it into a factor with levels based on the *reverse* order of the raw score (or offset score).
 

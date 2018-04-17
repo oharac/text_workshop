@@ -159,8 +159,8 @@ $(document).ready(function () {
 
 <span class="kw">library</span>(pdftools)
 <span class="kw">library</span>(tidytext)</code></pre></div>
-<p>There’s a great tutorial on using <code>tidytext</code> to do a sentiment analysis on the Lord of the Rings (<a href="https://www.r-bloggers.com/sentiment-analysis-of-the-lord-of-the-rings-with-tidytext/" class="uri">https://www.r-bloggers.com/sentiment-analysis-of-the-lord-of-the-rings-with-tidytext/</a>), so I adapted that for this workshop, and will use A Game of Thrones as an example.</p>
-<p>I’ve also included PDFs I found online for The Hobbit, Harry Potter and the Sorcerer’s Stone, and some Kurt Vonnegut short stories, in case you’d like to try one of those instead.</p>
+<p>There’s a great tutorial on using <code>tidytext</code> to do a sentiment analysis on the Lord of the Rings (<a href="https://www.r-bloggers.com/sentiment-analysis-of-the-lord-of-the-rings-with-tidytext/" class="uri">https://www.r-bloggers.com/sentiment-analysis-of-the-lord-of-the-rings-with-tidytext/</a>), so I adapted that for this workshop, and will use <em>A Game of Thrones</em> as an example.</p>
+<p>I’ve also included PDFs I found online for The Hobbit, Harry Potter and the Sorcerer’s Stone, and some Kurt Vonnegut short stories, in case you’d like to try one of those instead. Some of the pdfs are very poorly set up, to add some realistic challenge…</p>
 <div id="loading-and-cleaning-the-text" class="section level2">
 <h2><span class="header-section-number">2.1</span> Loading and cleaning the text</h2>
 <p>We will use some tricks to load the text and clean it up a bit for easier processing.</p>
@@ -230,7 +230,7 @@ text_w_ch &lt;-<span class="st"> </span>main_text <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">anti_join</span>(stop_words, <span class="dt">by =</span> <span class="st">'word'</span>) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">inner_join</span>(sentiments_b, <span class="dt">by =</span> <span class="st">'word'</span>)</code></pre></div>
 <p>For each chapter, add up the positives and negatives (using <code>dplyr::count()</code> is handy here), spread them out into columns and take the difference (number of positives - number of negatives).</p>
-<p>Subtracting the overall mean difference from each chapter’s difference will center the scores, essentially to account for a writer’s general tone. A Game of Thrones is overall pretty dark, so the average sentiment will be skewed negative…</p>
+<p>Subtracting the overall mean difference from each chapter’s difference will center the scores, essentially to account for a writer’s general tone. <em>A Game of Thrones</em> is overall pretty dark, so the average sentiment will be skewed negative…</p>
 <p>We can also add in a line to order the characters from worst outcome to best outcome. To do so, we turn it into a factor with levels based on the <em>reverse</em> order of the raw score (or offset score).</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">text_scores &lt;-<span class="st"> </span>text_words <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">ch =</span> <span class="kw">str_trim</span>(ch) <span class="op">%&gt;%</span><span class="st"> </span>tools<span class="op">::</span><span class="kw">toTitleCase</span>()) <span class="op">%&gt;%</span>
