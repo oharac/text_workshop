@@ -2,6 +2,8 @@
 title: 'Text analysis workshop: Basic sentiment analysis'
 author: "Casey O'Hara"
 output: 
+  pdf_document:
+    toc: false
   html_document:
     toc: false
     toc_depth: 3
@@ -9,8 +11,6 @@ output:
     number_sections: true
     theme: cerulean
     highlight: haddock
-  pdf_document:
-    toc: false
 ---
   
 ``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
@@ -125,7 +125,9 @@ text_words <- text_w_ch %>%
 
 For each chapter, add up the positives and negatives (using `dplyr::count()` is handy here), spread them out into columns and take the difference (number of positives - number of negatives).  
 
-Subtracting the overall mean difference from each chapter's difference will center the scores, perhaps to account for a writer's general tone.
+Subtracting the overall mean difference from each chapter's difference will center the scores, essentially to account for a writer's general tone.  A Game of Thrones is overall pretty dark, so the average sentiment will be skewed negative... 
+
+We can also add in a line to order the characters from worst outcome to best outcome.  To do so, we turn it into a factor with levels based on the *reverse* order of the raw score (or offset score).
 
 ```{r}
 
@@ -133,17 +135,24 @@ text_scores <- text_words %>%
   mutate(ch = str_trim(ch) %>% tools::toTitleCase()) %>%
   count(sentiment, ch) %>%
   spread(sentiment, n) %>%
-  mutate(score = (positive - negative) - mean(positive - negative),
-         offset = mean(positive - negative))
+  mutate(raw_score    = positive - negative,
+         offset       = mean(positive - negative),
+         offset_score = (positive - negative) - offset) %>%
+  mutate(ch = factor(ch, levels = ch[order(desc(raw_score))]))
+
 ```
 
 ## Time permitting: plot it!
+
+Spoiler alerts!
 
 ``` {r}
 
 ggplot(text_scores, aes(x = ch)) +
   theme_classic() +
-  geom_bar(aes(y = score), stat = 'identity', fill = 'slateblue3') +
+  geom_bar(aes(y = raw_score), stat = 'identity', fill = 'slateblue3') +
+  geom_bar(aes(y = offset_score), stat = 'identity', fill = 'red4') +
+  geom_hline(yintercept = text_scores$offset[1], linetype = 'dashed', size = .5) +
   labs(title = 'Sentiment analysis: Game of Thrones, by character',
        y = 'Sentiment score') +
   coord_flip() +
