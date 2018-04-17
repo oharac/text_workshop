@@ -2,8 +2,6 @@
 title: 'Text analysis workshop: Getting data from PDFs'
 author: "Casey O'Hara"
 output: 
-  pdf_document:
-    toc: false
   html_document:
     toc: false
     toc_depth: 3
@@ -11,6 +9,8 @@ output:
     number_sections: true
     theme: cerulean
     highlight: haddock
+  pdf_document:
+    toc: false
 ---
 
 ``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
@@ -133,7 +133,7 @@ It's finicky so if it doesn't work properly right away, here are a couple of not
     
 Note that the `tabulizer::extract_tables()` function returned some warnings, but still returned the tables as well.  Compare table 1 (first item in the list) to our results using `pdftools`...
 
-``` {r}
+``` {r, eval = FALSE}
 # devtools::install_github(c("ropensci/tabulizerjars"))
 # devtools::install_github(c("ropensci/tabulizer"))
 library(tabulizer)
