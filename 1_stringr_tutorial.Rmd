@@ -33,7 +33,7 @@ The data are narratives pulled from the IUCN API (http://apiv3.iucnredlist.org/)
 
 ``` {r} 
 library(tidyverse)
-library(stringr)
+# library(stringr)
 
 ### original dataset from the manuscript is here:
 # data_dir <- 'https://raw.githubusercontent.com/OHI-Science/IUCN-AquaMaps/master/clip_depth'
@@ -299,9 +299,10 @@ y %>% str_replace_all('(?<=two|blue) fish', '...')
 * use `pattern = 'whatever'` to only select files whose basename matches the pattern - including regex!
 
 ``` {r} 
-list.files('sample_files')
-list.files('sample_files', pattern = 'jpg$')
-list.files('sample_files', pattern = '[0-9]{4}')
+list.files(path = 'sample_files')
+list.files(path = 'sample_files', pattern = 'jpg$', full.names = TRUE, recursive = TRUE)
+list.files(path = '~/github/text_workshop/sample_files', pattern = '[0-9]{4}', 
+           full.names = TRUE, recursive = TRUE)
 raster_files <- list.files('sample_files', pattern = '^sample.+[0-9]{4}.tif$') 
   ### note: should technically be '\\.tif$' - do you see why?
 

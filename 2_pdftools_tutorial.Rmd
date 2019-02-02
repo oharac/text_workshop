@@ -26,7 +26,6 @@ How often have you run across a published paper with awesome-looking data, but i
 
 ```{r}
 library(tidyverse)
-library(stringr)
 
 library(pdftools)
 
