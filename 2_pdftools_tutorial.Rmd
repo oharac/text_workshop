@@ -58,19 +58,19 @@ Then we can use `stringr::str_split()` to break the pages up into individual lin
 
 ``` {r}
 
-smith_df <- data.frame(text = smith_text) 
+smith_df <- data.frame(text = smith_text) # one row per page
 
 smith_df <- data.frame(text = smith_text) %>%
   mutate(page = 1:n()) %>%
-  mutate(text_sep = str_split(text, '\\n')) %>%
-  unnest(text_sep)
+  mutate(text_sep = str_split(text, '\\n')) %>% # split by line, text_set=lists of lines 
+  unnest(text_sep) # separate lists into rows
 
 smith_df <- data.frame(text = smith_text) %>%
   mutate(page = 1:n()) %>%
   mutate(text_sep = str_split(text, '\\n')) %>%
   unnest(text_sep) %>%
   group_by(page) %>%
-  mutate(line = 1:n()) %>%
+  mutate(line = 1:n()) %>% # add line #s by page
   ungroup()
 
 ```
