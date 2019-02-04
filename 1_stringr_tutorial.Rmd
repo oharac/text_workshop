@@ -2,6 +2,8 @@
 title: 'Text analysis workshop: stringr package and regex'
 author: "Casey O'Hara"
 output: 
+  pdf_document:
+    toc: false
   html_document:
     toc: false
     toc_depth: 3
@@ -9,8 +11,6 @@ output:
     number_sections: true
     theme: cerulean
     highlight: haddock
-  pdf_document:
-    toc: false
 ---
 
 ``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
@@ -33,21 +33,21 @@ The data are narratives pulled from the IUCN API (http://apiv3.iucnredlist.org/)
 
 ``` {r} 
 library(tidyverse)
-library(stringr)
+# library(stringr)
 
 ### original dataset from the manuscript is here:
 # data_dir <- 'https://raw.githubusercontent.com/OHI-Science/IUCN-AquaMaps/master/clip_depth'
 
-coral_spp_narratives <- read_csv('data/iucn_narratives.csv')
-# head(coral_spp_narratives)
+coral_narrs <- read_csv('data/iucn_narratives.csv')
+# head(coral_narrs)
 ### interested in species_id, habitat
-coral_spp_info <- read_csv('data/coral_spp_info.csv')
-# head(coral_spp_info)
+coral_info <- read_csv('data/coral_spp_info.csv')
+# head(coral_info)
 ### info for species mapped in both datasets
 
 ### create a dataframe with just ID, scientific name, and habitat
-coral_habs_raw <- coral_spp_narratives %>%
-  left_join(coral_spp_info, by = 'iucn_sid') %>%
+coral_habs_raw <- coral_narrs %>%
+  left_join(coral_info, by = 'iucn_sid') %>%
   select(iucn_sid, sciname, habitat)
 ```
 
@@ -103,7 +103,7 @@ str_locate(x, 't'); str_locate_all(x, 'y')
 
 # Use `stringr` functions on coral data
 
-First we can use `stringr::str_splilt()` to break down the habitat column into manageable chunks, i.e. sentences.  What is an easily accessible delimiter we can use to separate a paragraph into sentences?
+First we can use `stringr::str_split()` to break down the habitat column into manageable chunks, i.e. sentences.  What is an easily accessible delimiter we can use to separate a paragraph into sentences?
 
 ### Take 1:
 
@@ -246,7 +246,7 @@ Note, still some issues in here: some fields show size e.g. 1 m diameter; other 
 Combining multiple tests using "or", and adding string start and end characters.
 
 ``` {r}
-coral_threats <- coral_spp_narratives %>%
+coral_threats <- coral_narrs %>%
   select(iucn_sid, threats) %>%
   mutate(threats = tolower(threats),
          threats_cut = str_split(threats, '\\. ')) %>%
@@ -299,9 +299,10 @@ y %>% str_replace_all('(?<=two|blue) fish', '...')
 * use `pattern = 'whatever'` to only select files whose basename matches the pattern - including regex!
 
 ``` {r} 
-list.files('sample_files')
-list.files('sample_files', pattern = 'jpg$')
-list.files('sample_files', pattern = '[0-9]{4}')
+list.files(path = 'sample_files')
+list.files(path = 'sample_files', pattern = 'jpg$', full.names = TRUE, recursive = TRUE)
+list.files(path = '~/github/text_workshop/sample_files', pattern = '[0-9]{4}', 
+           full.names = TRUE, recursive = TRUE)
 raster_files <- list.files('sample_files', pattern = '^sample.+[0-9]{4}.tif$') 
   ### note: should technically be '\\.tif$' - do you see why?
 

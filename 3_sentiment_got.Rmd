@@ -34,7 +34,6 @@ We'll try twitter in the next exercise; but first, let's just look at how to do 
 
 ```{r}
 library(tidyverse)
-library(stringr)
 
 library(pdftools)
 library(tidytext)
@@ -46,18 +45,18 @@ I've also included PDFs I found online for The Hobbit, Harry Potter and the Sorc
 
 ## Loading and cleaning the text
 
-We will use some tricks to load the text and clean it up a bit for easier processing.
+We can use some tricks to load the text and clean it up a bit for easier processing.
 
 * Get the text using `pdftools::pdf_text` and turn it into a dataframe, including page numbers.
 * Filter to the page numbers of the actual text (no table of contents, preface, etc)
 * get chapter info and attach that to each page.  We'll analyze the overall sentiment of each chapter separately.
 * Clean the text by converting all to lower case, then splitting each page into individual lines.
+* For the workshop, we'll just use a pre-cleaned version but here's the code:
 
-``` {r}
+``` {r, eval = FALSE}
 got <- pdf_text('pdfs/got.pdf')
 got_df <- data.frame(text = got) %>%
-  mutate(text = tolower(text),
-         page = 1:n()) 
+  mutate(page = 1:n()) 
 
 main_text <- got_df %>% 
   filter(page %in% 6:731) %>%
@@ -66,8 +65,11 @@ main_text <- got_df %>%
 
 ch_list <- main_text %>%
   group_by(page) %>%
-  mutate(ch = ifelse(str_detect(first(text), 'previous.+table of contents.+next'),
-                     nth(text, 2), NA)) %>%
+  mutate(ch = ifelse(str_detect(first(tolower(text)), 
+                                'previous.+table of contents.+next'),
+                     nth(text, 2), NA),
+         ch = tools::toTitleCase(tolower(ch)),
+         ch = str_trim(ch)) %>%
   filter(text == first(text)) %>%
   filter(!is.na(ch)) %>%
   ungroup() %>%
@@ -79,6 +81,8 @@ text_w_ch <- main_text %>%
   left_join(ch_list, by = 'page') %>%
   fill(ch, .direction = 'down') %>%
   fill(ch_num, .direction = 'down')
+
+write_csv(text_w_ch, 'data/got_text.csv')
 
 ```
 
@@ -92,9 +96,13 @@ There is also a `stop_words` dataframe of common words (e.g. "the", "a", "an", e
 
 head(stop_words) ### common words that won't impact analysis
 
+stop_words$lexicon %>% unique()
+
+stop_words <- get_stopwords(language = 'en', source = 'snowball')
+
 ```
 
-The `tidytext::get_sentiments()` function returns a dataframe of words and their associated sentiments.  There are four built-in as of now; you could also adapt or create your own sentiment library (and we'll see why soon).
+The `tidytext::get_sentiments()` function returns a dataframe of words and their associated sentiments.  There are four built-in as of now; you could also adapt or create your own sentiment library.  Why would you create your own sentiment library?  In particular contexts, words may have particular meanings with sentiment implications that are different from the common-use meanings - e.g. "bait" might show up in a paper on fisheries and holds a neutral meaning, but in a non-fisheries context, to "bait" someone is seen as a negative action.  Or perhaps you want to analyze text/tweets/articles with a particular coding scheme in mind to focus on specific words important to your research.
 
 ``` {r} 
 sentiments_b <- get_sentiments('bing')
@@ -116,10 +124,19 @@ The steps here:
 
 ``` {r}
 
-text_words <- text_w_ch %>%
+got_text <- read_csv('data/got_text.csv')
+
+text_words <- got_text %>%
   tidytext::unnest_tokens(output = word, input = text, token = 'words') %>%
   anti_join(stop_words, by = 'word') %>%
   inner_join(sentiments_b, by = 'word')
+
+# text_ngrams <- got_text %>%
+#   filter(!str_detect(tolower(text), 'table of contents')) %>%
+#   filter(text != ch) %>%
+#   group_by(ch, ch_num) %>%
+#   summarize(text = paste(text, collapse = ' ')) %>%
+#   tidytext::unnest_tokens(output = word, input = text, token = 'ngrams', n = 3)
 
 ```
 
@@ -132,15 +149,19 @@ We can also add in a line to order the characters from worst outcome to best out
 ```{r}
 
 text_scores <- text_words %>%
-  mutate(ch = str_trim(ch) %>% tools::toTitleCase()) %>%
   count(sentiment, ch) %>%
   spread(sentiment, n) %>%
   mutate(raw_score    = positive - negative,
          offset       = mean(positive - negative),
          offset_score = (positive - negative) - offset) %>%
-  mutate(ch = factor(ch, levels = ch[order(desc(raw_score))]))
+  arrange(desc(raw_score)) %>%
+  mutate(ch = fct_inorder(ch))
 
 ```
+
+### NOTE:
+
+This is a very simple sentiment analysis.  The `sentimentr` package (https://cran.r-project.org/web/packages/sentimentr/index.html) seems to be able to parse things at the sentence level, accounting for negations etc. (e.g. "I am not having a good day.")
 
 ## Time permitting: plot it!
 
@@ -153,9 +174,9 @@ ggplot(text_scores, aes(x = ch)) +
   geom_bar(aes(y = raw_score), stat = 'identity', fill = 'slateblue3') +
   geom_bar(aes(y = offset_score), stat = 'identity', fill = 'red4') +
   geom_hline(yintercept = text_scores$offset[1], linetype = 'dashed', size = .5) +
-  labs(title = 'Sentiment analysis: Game of Thrones, by character',
-       y = 'Sentiment score') +
   coord_flip() +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank()) +
+  labs(title = 'Sentiment analysis: Game of Thrones, by character',
+       y = 'Sentiment score')
 
 ```

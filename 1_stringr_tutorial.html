@@ -24,7 +24,7 @@
 
 
 <style type="text/css">code{white-space: pre;}</style>
-<style type="text/css">
+<style type="text/css" data-origin="pandoc">
 div.sourceCode { overflow-x: auto; }
 table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
   margin: 0; padding: 0; vertical-align: baseline; border: none; }
@@ -55,7 +55,29 @@ code > span.an { color: #008000; } /* Annotation */
 code > span.cv { color: #008000; } /* CommentVar */
 code > span.at { } /* Attribute */
 code > span.in { color: #008000; } /* Information */
+
 </style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
 <style type="text/css">
   pre:not([class]) {
     background-color: white;
@@ -112,8 +134,14 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
+.html-widget {
+  margin-bottom: 20px;
+}
 button.code-folding-btn:focus {
   outline: none;
+}
+summary {
+  display: list-item;
 }
 </style>
 
@@ -122,14 +150,74 @@ button.code-folding-btn:focus {
 <div class="container-fluid main-container">
 
 <!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
 <script>
 $(document).ready(function () {
   window.buildTabsets("TOC");
 });
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
 </script>
 
 <!-- code folding -->
-
 
 
 
@@ -154,21 +242,21 @@ $(document).ready(function () {
 <h1><span class="header-section-number">2</span> Load packages and data</h1>
 <p>The data are narratives pulled from the IUCN API (<a href="http://apiv3.iucnredlist.org/" class="uri">http://apiv3.iucnredlist.org/</a>) for coral species, in order to identify their maximum depth. We’ll also pull up a set of data on species areas, but mostly just because that data includes scientific names for the corals so we can refer to species rather than ID numbers.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(tidyverse)
-<span class="kw">library</span>(stringr)
+<span class="co"># library(stringr)</span>
 
 ### original dataset from the manuscript is here:
 <span class="co"># data_dir &lt;- 'https://raw.githubusercontent.com/OHI-Science/IUCN-AquaMaps/master/clip_depth'</span>
 
-coral_spp_narratives &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'data/iucn_narratives.csv'</span>)
-<span class="co"># head(coral_spp_narratives)</span>
+coral_narrs &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'data/iucn_narratives.csv'</span>)
+<span class="co"># head(coral_narrs)</span>
 ### interested in species_id, habitat
-coral_spp_info &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'data/coral_spp_info.csv'</span>)
-<span class="co"># head(coral_spp_info)</span>
+coral_info &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">'data/coral_spp_info.csv'</span>)
+<span class="co"># head(coral_info)</span>
 ### info for species mapped in both datasets
 
 ### create a dataframe with just ID, scientific name, and habitat
-coral_habs_raw &lt;-<span class="st"> </span>coral_spp_narratives <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">left_join</span>(coral_spp_info, <span class="dt">by =</span> <span class="st">'iucn_sid'</span>) <span class="op">%&gt;%</span>
+coral_habs_raw &lt;-<span class="st"> </span>coral_narrs <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">left_join</span>(coral_info, <span class="dt">by =</span> <span class="st">'iucn_sid'</span>) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">select</span>(iucn_sid, sciname, habitat)</code></pre></div>
 <div id="examine-a-few-habitat-descriptions" class="section level2">
 <h2><span class="header-section-number">2.1</span> examine a few habitat descriptions</h2>
@@ -384,7 +472,7 @@ coral_depth &lt;-<span class="st"> </span>coral_depth <span class="op">%&gt;%</s
 <div id="start-string-end-string-and-or-operator" class="section level2">
 <h2><span class="header-section-number">7.1</span> start string, end string, and “or” operator</h2>
 <p>Combining multiple tests using “or”, and adding string start and end characters.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">coral_threats &lt;-<span class="st"> </span>coral_spp_narratives <span class="op">%&gt;%</span>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">coral_threats &lt;-<span class="st"> </span>coral_narrs <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">select</span>(iucn_sid, threats) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">threats =</span> <span class="kw">tolower</span>(threats),
          <span class="dt">threats_cut =</span> <span class="kw">str_split</span>(threats, <span class="st">'</span><span class="ch">\\</span><span class="st">. '</span>)) <span class="op">%&gt;%</span>
@@ -432,15 +520,20 @@ y <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">str_lo
 <li>use <code>all.files = TRUE</code> if you need to find hidden files (e.g. <code>.gitignore</code>)</li>
 <li>use <code>pattern = 'whatever'</code> to only select files whose basename matches the pattern - including regex!</li>
 </ul>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">list.files</span>(<span class="st">'sample_files'</span>)</code></pre></div>
-<pre><code>## [1] &quot;notes1.md&quot;               &quot;sample_file_Apr2017.jpg&quot;
-## [3] &quot;sample_file_Apr2017.tif&quot; &quot;sample_file_Apr2018.jpg&quot;
-## [5] &quot;sample_file_Apr2018.tif&quot;</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">list.files</span>(<span class="st">'sample_files'</span>, <span class="dt">pattern =</span> <span class="st">'jpg$'</span>)</code></pre></div>
-<pre><code>## [1] &quot;sample_file_Apr2017.jpg&quot; &quot;sample_file_Apr2018.jpg&quot;</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">list.files</span>(<span class="st">'sample_files'</span>, <span class="dt">pattern =</span> <span class="st">'[0-9]{4}'</span>)</code></pre></div>
-<pre><code>## [1] &quot;sample_file_Apr2017.jpg&quot; &quot;sample_file_Apr2017.tif&quot;
-## [3] &quot;sample_file_Apr2018.jpg&quot; &quot;sample_file_Apr2018.tif&quot;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">list.files</span>(<span class="dt">path =</span> <span class="st">'sample_files'</span>)</code></pre></div>
+<pre><code>## [1] &quot;more&quot;                    &quot;notes1.md&quot;              
+## [3] &quot;sample_file_Apr2017.jpg&quot; &quot;sample_file_Apr2017.tif&quot;
+## [5] &quot;sample_file_Apr2018.jpg&quot; &quot;sample_file_Apr2018.tif&quot;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">list.files</span>(<span class="dt">path =</span> <span class="st">'sample_files'</span>, <span class="dt">pattern =</span> <span class="st">'jpg$'</span>, <span class="dt">full.names =</span> <span class="ot">TRUE</span>, <span class="dt">recursive =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<pre><code>## [1] &quot;sample_files/sample_file_Apr2017.jpg&quot;
+## [2] &quot;sample_files/sample_file_Apr2018.jpg&quot;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">list.files</span>(<span class="dt">path =</span> <span class="st">'~/github/text_workshop/sample_files'</span>, <span class="dt">pattern =</span> <span class="st">'[0-9]{4}'</span>, 
+           <span class="dt">full.names =</span> <span class="ot">TRUE</span>, <span class="dt">recursive =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<pre><code>## [1] &quot;/home/ohara/github/text_workshop/sample_files/more/sample_file_May2018.tif&quot;
+## [2] &quot;/home/ohara/github/text_workshop/sample_files/sample_file_Apr2017.jpg&quot;     
+## [3] &quot;/home/ohara/github/text_workshop/sample_files/sample_file_Apr2017.tif&quot;     
+## [4] &quot;/home/ohara/github/text_workshop/sample_files/sample_file_Apr2018.jpg&quot;     
+## [5] &quot;/home/ohara/github/text_workshop/sample_files/sample_file_Apr2018.tif&quot;</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">raster_files &lt;-<span class="st"> </span><span class="kw">list.files</span>(<span class="st">'sample_files'</span>, <span class="dt">pattern =</span> <span class="st">'^sample.+[0-9]{4}.tif$'</span>) 
   ### note: should technically be '\\.tif$' - do you see why?
 
