@@ -44,10 +44,10 @@ I am going to skip a few steps here to keep my tokens hidden but once you get yo
 
 ```{r apiTokenEx}
 ## autheticate via web browser
-token <- create_token(
-  app = "rtweetToken",
-  consumer_key = "Wcxd1...NBY2E",
-  consumer_secret = "1sTDb2Xz...ld4jv6jasve3h56bY")
+# token <- create_token(
+#   app = "rtweetToken",
+#   consumer_key = "Wcxd1...NBY2E",
+#   consumer_secret = "1sTDb2Xz...ld4jv6jasve3h56bY")
 ## click 'Authorize' on the pop-up browser window
 
 ```
@@ -71,11 +71,18 @@ Now that we have access to Twitter data, we can use `search_tweets()` to search 
 
 ![](Figs/black-history-month.jpg) 
 
-This query searched **"#blackhistorymonth"** and limited the response to **500 tweets**.
+This query searched **"#blackhistorymonth"** and limited the response to **500 tweets**. Since we can't access Twitter without an active token, this script just pulls in a static CSV previously pulled from Twitter so that the word cloud code can be run.
 
 ```{r searchTwts}
 
-bhm_tweets <- search_tweets(q = "#blackhistorymonth", n = 500)
+# bhm_tweets <- search_tweets(q = "#blackhistorymonth", n = 500) 
+# 
+# bhm_tweets2<-bhm_tweets %>%
+#   select(text) # keep just the tweet text content
+# 
+# write.csv(bhm_tweets2, file="data/bhmTweets.csv",row.names=F)
+
+bhm_tweets<-read_csv("data/bhmTweets.csv")
 
 colnames(bhm_tweets)
 
@@ -90,8 +97,7 @@ Let's do a bit of tidying to get these data into a format that works with the `w
 
 data("stop_words")
 
-bhm<-bhm_tweets %>% 
-  select(text)%>%
+bhm<-bhm_tweets %>%
   filter(!duplicated(text)) %>%
   unnest_tokens(word,text) %>%
   select(word) %>%
