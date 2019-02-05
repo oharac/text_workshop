@@ -93,7 +93,6 @@ data("stop_words")
 bhm<-bhm_tweets %>% 
   select(text)%>%
   filter(!duplicated(text)) %>%
-  #mutate(word = str_split(text, ' ')) %>%
   unnest_tokens(word,text) %>%
   select(word) %>%
   filter(!word=="#BlackHistoryMonth",!word=="blackhistorymonth",!word=="https",!word=="t.co") %>%
