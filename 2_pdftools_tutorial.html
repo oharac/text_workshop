@@ -9,7 +9,7 @@
 <meta name="generator" content="pandoc" />
 
 
-<meta name="author" content="Casey O’Hara" />
+<meta name="author" content="Casey O’Hara, Jessica Couture" />
 
 
 <title>Text analysis workshop: Getting data from PDFs</title>
@@ -228,7 +228,7 @@ $(document).ready(function () {
 
 
 <h1 class="title toc-ignore">Text analysis workshop: Getting data from PDFs</h1>
-<h4 class="author"><em>Casey O’Hara</em></h4>
+<h4 class="author"><em>Casey O’Hara, Jessica Couture</em></h4>
 
 </div>
 
@@ -258,19 +258,19 @@ $(document).ready(function () {
 smith_text &lt;-<span class="st"> </span><span class="kw">pdf_text</span>(pdf_smith)</code></pre></div>
 <p><code>pdf_text()</code> returns a vector of strings, one for each page of the pdf. So we can mess with it in tidyverse style, let’s turn it into a dataframe, and keep track of the pages.</p>
 <p>Then we can use <code>stringr::str_split()</code> to break the pages up into individual lines. Each line of the pdf is concluded with a backslash-n, so split on this. We will also add a line number in addition to the page number.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">smith_df &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">text =</span> smith_text) 
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">smith_df &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">text =</span> smith_text) <span class="co"># one row per page</span>
 
 smith_df &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">text =</span> smith_text) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">page =</span> <span class="dv">1</span><span class="op">:</span><span class="kw">n</span>()) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">text_sep =</span> <span class="kw">str_split</span>(text, <span class="st">'</span><span class="ch">\\</span><span class="st">n'</span>)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">unnest</span>(text_sep)
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">text_sep =</span> <span class="kw">str_split</span>(text, <span class="st">'</span><span class="ch">\\</span><span class="st">n'</span>)) <span class="op">%&gt;%</span><span class="st"> </span><span class="co"># split by line, text_set=lists of lines </span>
+<span class="st">  </span><span class="kw">unnest</span>(text_sep) <span class="co"># separate lists into rows</span>
 
 smith_df &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">text =</span> smith_text) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">page =</span> <span class="dv">1</span><span class="op">:</span><span class="kw">n</span>()) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">text_sep =</span> <span class="kw">str_split</span>(text, <span class="st">'</span><span class="ch">\\</span><span class="st">n'</span>)) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">unnest</span>(text_sep) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">group_by</span>(page) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">line =</span> <span class="dv">1</span><span class="op">:</span><span class="kw">n</span>()) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">line =</span> <span class="dv">1</span><span class="op">:</span><span class="kw">n</span>()) <span class="op">%&gt;%</span><span class="st"> </span><span class="co"># add line #s by page</span>
 <span class="st">  </span><span class="kw">ungroup</span>()</code></pre></div>
 </div>
 <div id="getting-the-table-out-of-the-pdf" class="section level1">

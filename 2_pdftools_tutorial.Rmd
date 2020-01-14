@@ -1,6 +1,6 @@
 ---
 title: 'Text analysis workshop: Getting data from PDFs'
-author: "Casey O'Hara"
+author: "Casey O'Hara, Jessica Couture"
 output: 
   html_document:
     toc: false
