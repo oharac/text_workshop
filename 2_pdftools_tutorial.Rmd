@@ -110,38 +110,9 @@ table1_tidy_df <- table1_df %>%
          n_patches = as.integer(n_patches),
          n_divers = as.integer(n_divers))
 
+DT::datatable(table1_tidy_df)
 ```
 
-With pdftools, we extracted a data table, but we could also just extract the text itself if that's what we really wanted.  We'll do this in the next exercise, but first:
+With pdftools, we extracted a data table, but we could also just extract the text itself if that's what we really wanted.  
 
-# `tabulizer` package!
-
-Another package for extracting table data from pdfs is the `tabulizer` package from ROpenSci.  This takes advantage of Java functionality, so you will need Java installed on your computer for it to work.  It is pretty finicky, and the results seem so-so in terms of formatting, requiring a lot of manual cleanup.  The one advantage is that it automatically pulls ALL tables from a paper without having to know page/line numbers, etc - so it might be great if you need to automate table extraction from dozens of papers.
-
-## Installing Java
-
-I downloaded/installed the JDK (includes JRE): http://www.oracle.com/technetwork/java/javase/downloads/index.html
-
-It's finicky so if it doesn't work properly right away, here are a couple of notes I found through the Googles that helped:
-
-* in R: `dyn.load(paste0(system2('/usr/libexec/java_home', stdout = TRUE), '/jre/lib/server/libjvm.dylib'))`
-* in terminal: `R CMD javareconf`
-* Once it's working, the `rJava` should load: 
-    * `# install.packages('rJava')`
-    * `library(rJava)` should not return any errors.
-    
-Note that the `tabulizer::extract_tables()` function returned some warnings, but still returned the tables as well.  Compare table 1 (first item in the list) to our results using `pdftools`...
-
-``` {r, eval = FALSE}
-# devtools::install_github(c("ropensci/tabulizerjars"))
-# devtools::install_github(c("ropensci/tabulizer"))
-library(tabulizer)
-
-pdf_smith <- file.path('pdfs/smith_wilen_2003.pdf')
-
-tables_list <- tabulizer::extract_tables(pdf_smith)
-
-tab1_df <- tables_list[[1]] %>%
-  as.data.frame(stringsAsFactors = FALSE)
-
-```
+## See also: https://github.com/ropensci/tabulizer

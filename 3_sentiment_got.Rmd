@@ -41,7 +41,7 @@ library(tidytext)
 
 There's a great tutorial on using `tidytext` to do a sentiment analysis on the Lord of the Rings (https://www.r-bloggers.com/sentiment-analysis-of-the-lord-of-the-rings-with-tidytext/), so I adapted that for this workshop, and will use _A Game of Thrones_ as an example.
 
-I've also included PDFs I found online for The Hobbit, Harry Potter and the Sorcerer's Stone, and some Kurt Vonnegut short stories, in case you'd like to try one of those instead.  Some of the pdfs are very poorly set up, to add some realistic challenge...
+I've also included PDFs I found online for The Hobbit, Harry Potter and the Sorcerer's Stone, in case you'd like to try one of those instead.  Some of the pdfs are very poorly set up, to add some realistic challenge...
 
 ## Loading and cleaning the text
 
@@ -98,6 +98,7 @@ head(stop_words) ### common words that won't impact analysis
 
 stop_words$lexicon %>% unique()
 
+### note: this function requires installing the stopwords package...
 stop_words <- get_stopwords(language = 'en', source = 'snowball')
 
 ```
@@ -144,6 +145,12 @@ For each chapter, add up the positives and negatives (using `dplyr::count()` is 
 
 Subtracting the overall mean difference from each chapter's difference will center the scores, essentially to account for a writer's general tone.  _A Game of Thrones_ is overall pretty dark, so the average sentiment will be skewed negative... 
 
+Another common adjustment method is to take the log ratio of positive to negative words; this also offsets differences in word count due to longer/shorter chapters:
+
+$$\log \frac{\text{positive words}}{\text{negative words}}$$
+
+Equal ratio results in a score of zero; a greater frequency of positive than negative results in a positive score and vice versa.
+
 We can also add in a line to order the characters from worst outcome to best outcome.  To do so, we turn it into a factor with levels based on the *reverse* order of the raw score (or offset score).
 
 ```{r}
@@ -153,7 +160,8 @@ text_scores <- text_words %>%
   spread(sentiment, n) %>%
   mutate(raw_score    = positive - negative,
          offset       = mean(positive - negative),
-         offset_score = (positive - negative) - offset) %>%
+         offset_score = (positive - negative) - offset,
+         log_ratio    = log(positive / negative)) %>%
   arrange(desc(raw_score)) %>%
   mutate(ch = fct_inorder(ch))
 
@@ -178,5 +186,13 @@ ggplot(text_scores, aes(x = ch)) +
   theme(axis.title.y = element_blank()) +
   labs(title = 'Sentiment analysis: Game of Thrones, by character',
        y = 'Sentiment score')
+
+ggplot(text_scores, aes(x = ch)) +
+  theme_classic() +
+  geom_bar(aes(y = log_ratio), stat = 'identity', fill = 'red4') +
+  coord_flip() +
+  theme(axis.title.y = element_blank()) +
+  labs(title = 'Sentiment analysis: Game of Thrones, by character',
+       y = 'Log(pos count / neg count)')
 
 ```
