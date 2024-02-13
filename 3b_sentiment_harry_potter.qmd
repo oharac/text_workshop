@@ -11,7 +11,8 @@ execute:
   warning: false
   message: false
 ---
-
+  
+    
 ```{r load packages}
 library(tidyverse)
 library(tidytext)
@@ -24,16 +25,16 @@ library(ggwordcloud)
 
 Sentiment analysis is a fairly basic way to get a sense of the mood of a piece of text.  In an eco-data-science sense, we can use sentiment analysis to understand perceptions of topics in environmental policy.  
 
-A good example is "Public Perceptions of Aquaculture: Evaluating Spatiotemporal Patterns of Sentiment around the World" by local celebrities Halley Froehlich, Becca Gentry, and Ben Halpern, in which they examine public pereptions of aquaculture by performing sentiment analyses on newspaper headlines from around the globe and government-solicited public comments on aquaculture policy and development.  This paper is included in the 'pdfs' folder on Github, or available here: http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0169281
+A good example is "Public Perceptions of Aquaculture: Evaluating Spatiotemporal Patterns of Sentiment around the World" by local celebrities Halley Froehlich, Becca Gentry, and Ben Halpern, in which they examine public perceptions of aquaculture by performing sentiment analyses on newspaper headlines from around the globe and government-solicited public comments on aquaculture policy and development.  This paper is included in the 'pdfs' folder on Github, or available here: http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0169281
 
 Another popular use of sentiment analysis is to determine the mood of Twitter comments.  One excellent example is an examination of Trump tweets, which noted that tweets from an iPhone and an Android phone were markedly different in tone; the thought was that the Android account (with generally far more negative tweets) was run by Trump while the iPhone (with generally more postive tweets) was tweets from a staffer.  See: http://varianceexplained.org/r/trump-tweets/
 
-# Sentiment analysis example: The Hobbit
+# Sentiment analysis example: Harry Potter and the Sorceror's Stone
 
-## Read in The Hobbit text from pdf
+## Read in text from pdf
 
 ```{r, cache = TRUE}
-hobbit_text <- pdf_text(here::here('pdfs', 'the-hobbit.pdf'))
+hp_text <- pdf_text(here::here('pdfs', 'harry_potter.pdf'))
 ```
 
 - Each row is a page of the PDF (i.e., this is a vector of strings, one for each page)
@@ -42,7 +43,7 @@ hobbit_text <- pdf_text(here::here('pdfs', 'the-hobbit.pdf'))
 Example: Just want to get text from a single page (e.g. Page 34)? 
 
 ```{r}
-hobbit_p34 <- hobbit_text[34]
+hp_p34 <- hp_text[34]
 ```
 
 `pdf_text()` returns a vector of strings, one for each page of the pdf. So we can mess with it in tidyverse style, let’s turn it into a dataframe, and keep track of the pages. Then we can use `stringr::str_split()` to break the pages up into individual lines. Each line of the pdf is concluded with a backslash-n, so split on this. We will also add a line number in addition to the page number.
@@ -50,9 +51,9 @@ hobbit_p34 <- hobbit_text[34]
 Let's first get it into a data frame. Then we'll do some wrangling with the tidyverse, break it up by chapter, and do some analyses. 
 
 ```{r}
-hobbit_lines <- data.frame(hobbit_text) %>% 
+hp_lines <- data.frame(hp_text) %>% 
   mutate(page = 1:n()) %>%
-  mutate(text_full = str_split(hobbit_text, pattern = '\\n')) %>% 
+  mutate(text_full = str_split(hp_text, pattern = '\\n')) %>% 
   unnest(text_full) %>% 
   mutate(text_full = str_trim(text_full)) 
 
@@ -65,27 +66,27 @@ hobbit_lines <- data.frame(hobbit_text) %>%
 
 Now, we'll add a new column that contains the Chapter number (so we can use this as a grouping variable later on).
 
-We will use `str_detect()` to look for any cells in "text_full" column that contains the string "Chapter", and if it does, the new column will contain that chapter number:
+We will use `str_detect()` to look for any cells in "text_full" column that contains the string "CHAPTER", and if it does, the new column will contain that chapter number (by word):
 
 ```{r}
-hobbit_chapts <- hobbit_lines %>% 
-  slice(-(1:137)) %>% 
-  mutate(chapter = ifelse(str_detect(text_full, "Chapter"), text_full, NA)) %>% 
+hp_chapts <- hp_lines %>% 
+  slice(-(1:2)) %>% 
+  mutate(chapter = ifelse(str_detect(text_full, "CHAPTER"), text_full, NA)) %>% 
   fill(chapter, .direction = 'down') %>% 
-  separate(col = chapter, into = c("ch", "num"), sep = " ") %>% 
-  mutate(chapter = as.numeric(as.roman(num)))
+  mutate(chapter = str_remove_all(chapter, 'CHAPTER ')) %>%
+  mutate(chapter = fct_inorder(chapter))
 ```
 
 ## Get some word counts by Chapter!
 
 ```{r}
-hobbit_words <- hobbit_chapts %>% 
+hp_words <- hp_chapts %>% 
   unnest_tokens(word, text_full) %>% 
-  select(-hobbit_text)
+  select(-hp_text)
 ```
 
 ```{r}
-hobbit_wordcount <- hobbit_words %>% 
+hp_wordcount <- hp_words %>% 
   group_by(chapter, word) %>%
   summarize(n = n())
 ```
@@ -96,17 +97,17 @@ hobbit_wordcount <- hobbit_words %>%
 
 Those very common (and often uninteresting) words are called "stop words." See `?stop_words` and `View(stop_words)`to look at documentation for stop words lexicons (from the `tidytext` package).
 
-We will *remove* stop words using `tidyr::anti_join()`, which will *omit* any words in `stop_words` from `hobbit_tokens`.
+We will *remove* stop words using `tidyr::anti_join()`, which will *omit* any words in `stop_words` from `hp_tokens`.
 
 ```{r}
 head(stop_words)
 
-hobbit_words_clean <- hobbit_words %>% 
+hp_words_clean <- hp_words %>% 
   anti_join(stop_words, by = 'word')
 ```
 Then let's try counting them again: 
 ```{r}
-nonstop_counts <- hobbit_words_clean %>% 
+nonstop_counts <- hp_words_clean %>% 
   count(chapter, word)
 ```
 
@@ -129,7 +130,7 @@ ggplot(data = top_5_words, aes(x = n, y = word)) +
 
 ```{r}
 ch1_top100 <- nonstop_counts %>% 
-  filter(chapter == 1) %>% 
+  filter(chapter == 'ONE') %>% 
   arrange(-n) %>% 
   slice(1:100)
 ```
@@ -192,18 +193,17 @@ nrc_lex <- get_sentiments(lexicon = "nrc")
 
 ### Sentiment analysis with bing: 
 
-First, bind words in `hobbit_nonstop_words` to `bing` lexicon:
+First, bind words in `hp_nonstop_words` to `bing` lexicon:
 ```{r}
-hobbit_bing <- hobbit_words_clean %>% 
+hp_bing <- hp_words_clean %>% 
   inner_join(bing_lex, by = 'word')
 ```
 
 Let's find some counts of positive vs negative:
 ```{r}
-bing_counts <- hobbit_bing %>% 
-  # group_by(chapter, sentiment) %>%
-  # summarize(n = n())
-  count(chapter, sentiment)
+bing_counts <- hp_bing %>% 
+  group_by(chapter, sentiment) %>%
+  summarize(n = n())
 
 # Plot them: 
 ggplot(data = bing_counts, aes(x = sentiment, y = n)) +
@@ -213,13 +213,13 @@ ggplot(data = bing_counts, aes(x = sentiment, y = n)) +
 
 ```{r}
 # find log ratio score overall:
-bing_log_ratio_book <- hobbit_bing %>% 
+bing_log_ratio_book <- hp_bing %>% 
   summarize(n_pos = sum(sentiment == 'positive'),
             n_neg = sum(sentiment == 'negative'),
             log_ratio = log(n_pos / n_neg))
 
 # Find the log ratio score by chapter: 
-bing_log_ratio_ch <- hobbit_bing %>% 
+bing_log_ratio_ch <- hp_bing %>% 
   group_by(chapter) %>% 
   summarize(n_pos = sum(sentiment == 'positive'),
             n_neg = sum(sentiment == 'negative'),
@@ -243,15 +243,15 @@ ggplot(data = bing_log_ratio_ch,
 
 ### Sentiment analysis with afinn (not run in workshop): 
 
-First, bind words in `hobbit_nonstop_words` to `afinn` lexicon:
+First, bind words in `hp_nonstop_words` to `afinn` lexicon:
 ```{r}
-hobbit_afinn <- hobbit_words_clean %>% 
+hp_afinn <- hp_words_clean %>% 
   inner_join(afinn_lex, by = 'word')
 ```
 
 Let's find some counts (by sentiment ranking):
 ```{r}
-afinn_counts <- hobbit_afinn %>% 
+afinn_counts <- hp_afinn %>% 
   group_by(chapter, value) %>%
   summarize(n = n())
 
@@ -261,7 +261,7 @@ ggplot(data = afinn_counts, aes(x = value, y = n)) +
   facet_wrap(~chapter)
 
 # Find the mean afinn score by chapter: 
-afinn_means <- hobbit_afinn %>% 
+afinn_means <- hp_afinn %>% 
   group_by(chapter) %>% 
   summarize(mean_afinn = mean(value))
 
@@ -277,24 +277,24 @@ ggplot(data = afinn_means,
 
 ### Now with NRC lexicon (not run in workshop)
 
-Recall, this assigns words to sentiment bins. Let's bind our hobbit data to the NRC lexicon: 
+Recall, this assigns words to sentiment bins. Let's bind our hp data to the NRC lexicon: 
 
 ```{r}
-hobbit_nrc <- hobbit_words_clean %>% 
+hp_nrc <- hp_words_clean %>% 
   inner_join(get_sentiments("nrc"))
 ```
 Let's find the count of words by chapter and sentiment bin: 
 
 ```{r}
-hobbit_nrc_counts <- hobbit_nrc %>% 
+hp_nrc_counts <- hp_nrc %>% 
   count(chapter, sentiment)
 
-ggplot(data = hobbit_nrc_counts, aes(x = n, y = sentiment)) +
+ggplot(data = hp_nrc_counts, aes(x = n, y = sentiment)) +
   geom_col() +
   facet_wrap(~chapter)
 ### perhaps order or color the sentiments by positive/negative
 
-ggplot(data = hobbit_nrc_counts, aes(x = n, 
+ggplot(data = hp_nrc_counts, aes(x = n, 
                                      y = factor(chapter) %>%
                                        fct_rev())) +
   geom_col() +
