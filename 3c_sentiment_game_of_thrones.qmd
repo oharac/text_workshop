@@ -11,7 +11,8 @@ execute:
   warning: false
   message: false
 ---
-
+  
+    
 ```{r load packages}
 library(tidyverse)
 library(tidytext)
@@ -28,12 +29,12 @@ A good example is "Public Perceptions of Aquaculture: Evaluating Spatiotemporal 
 
 Another popular use of sentiment analysis is to determine the mood of Twitter comments.  One excellent example is an examination of Trump tweets, which noted that tweets from an iPhone and an Android phone were markedly different in tone; the thought was that the Android account (with generally far more negative tweets) was run by Trump while the iPhone (with generally more postive tweets) was tweets from a staffer.  [See here for details.](http://varianceexplained.org/r/trump-tweets/)
 
-# Data prep: The Hobbit
+# Prep data: Game of Thrones
 
-## Read in The Hobbit text from pdf
+## Read in text from pdf
 
 ```{r}
-hobbit_text <- pdf_text(here::here('pdfs', 'the-hobbit.pdf'))
+got_text <- pdf_text(here::here('pdfs', 'got.pdf'))
 ```
 
 - Each row is a page of the PDF (i.e., this is a vector of strings, one for each page)
@@ -42,17 +43,17 @@ hobbit_text <- pdf_text(here::here('pdfs', 'the-hobbit.pdf'))
 Example: Just want to get text from a single page (e.g. Page 34)? 
 
 ```{r}
-hobbit_p34 <- hobbit_text[34]
+got_page <- got_text[12]
 ```
 
 `pdf_text()` returns a vector of strings, one for each page of the pdf. So we can mess with it in tidyverse style, let’s turn it into a dataframe, and keep track of the pages. Then we can use `stringr::str_split()` to break the pages up into individual lines. Each line of the pdf is concluded with a backslash-n, so split on this. We will also add a line number in addition to the page number.
 
-Let's first get it into a data frame. Then we'll do some wrangling with the tidyverse, break it up by chapter, and do some analyses. 
+Let's first get it into a data frame. Then we'll do some wrangling with the tidyverse, break it up by chapter and main character, and do some analyses. 
 
 ```{r}
-hobbit_lines <- data.frame(hobbit_text) %>% 
+got_lines <- data.frame(got_text) %>% 
   mutate(page = 1:n()) %>%
-  mutate(text_full = str_split(hobbit_text, pattern = '\\n')) %>% 
+  mutate(text_full = str_split(got_text, pattern = '\\n')) %>% 
   unnest(text_full) %>% 
   mutate(text_full = str_trim(text_full)) 
 
@@ -63,31 +64,51 @@ hobbit_lines <- data.frame(hobbit_text) %>%
 
 ## Do some tidying
 
-Now, we'll add a new column that contains the Chapter number (so we can use this as a grouping variable later on).
+Now, we'll add a new column that contains the main character name (so we can use this as a grouping variable later on).  Game of Thrones chapters are named after the character whose point of view is presented in the chapter.  Because we cannot search for the word "Chapter" like we could for Harry Potter or The Hobbit, we'll need to come up with a different means of identifying the start of a new chapter.
 
-We will use `str_detect()` to look for any cells in "text_full" column that contains the string "Chapter", and if it does, the new column will contain that chapter number:
+Examine the `got_lines` and scroll down to lines 530-545 to find a chapter break (or open the PDF).  Each chapter starts and ends with a header for navigation, so that could be one approach.  The title of the chapters are character names, in all caps, which is helpful in our case.
+
+* We will use `str_detect()` to look for any cells in "text_full" column that contain only capital letters - no punctuation, no lower case letters, but maybe a space - we will put that line into a new column as the chapter/main character name.  
+* Let's also skip the first few pages, which are table of contents etc.  
+* Let's also drop those chapter headers and footers: "previous | Table of Contents | next" by filtering.
+* Finally, let's put the character names into title case instead of all caps!
 
 ```{r}
-hobbit_chapts <- hobbit_lines %>% 
-  slice(-(1:137)) %>% 
-  mutate(chapter = ifelse(str_detect(text_full, "Chapter"), text_full, NA)) %>% 
-  fill(chapter, .direction = 'down') %>% 
-  separate(col = chapter, into = c("ch", "num"), sep = " ") %>% 
-  mutate(chapter = as.numeric(as.roman(num)))
+got_chars <- got_lines %>% 
+  filter(page >= 6) %>%
+  filter(page < 732) %>%
+  filter(!str_detect(text_full, "Table of Contents")) %>%
+  mutate(allcaps = str_detect(text_full, "^[A-Z ]+$")) %>%
+    ### the ^ outside [...] means "start of line", the $ means "end of line",
+    ### [A-Z ] means "match any cap letter or space", and 
+    ### the + means "one or more of the preceding thing".
+    ### NOTE: a ^ inside the [...] means NOT matching...
+  mutate(main_char = ifelse(allcaps, text_full, NA)) %>% 
+    ### could do the regex in the ifelse, but split out so we can see it 
+    ### more easily... when done, let's drop the column:
+  select(-allcaps) %>%
+  fill(main_char, .direction = 'down') %>% 
+  mutate(main_char = str_to_title(main_char),
+         main_char = fct_inorder(main_char))
+
+### how many lines of text for each character?
+got_chars$main_char %>% table()
 ```
 
-## Get some word counts by Chapter!
+## Get some word counts by main character!
 
 ```{r}
-hobbit_words <- hobbit_chapts %>% 
+got_words <- got_chars %>% 
   unnest_tokens(word, text_full) %>% 
-  select(-hobbit_text)
+  select(-got_text)
 ```
 
 ```{r}
-hobbit_wordcount <- hobbit_words %>% 
-  group_by(chapter, word) %>%
-  summarize(n = n())
+got_wordcount <- got_words %>% 
+  group_by(main_char, word) %>%
+  summarize(n = n(), .groups = 'drop')
+
+head(got_wordcount %>% arrange(desc(n)), 10)
 ```
 
 ...OK, but check out which words show up the most. They're probably not words we're super interested in (like "a", "the", "and"). How can we limit those? 
@@ -96,57 +117,62 @@ hobbit_wordcount <- hobbit_words %>%
 
 Those very common (and often uninteresting) words are called "stop words." See `?stop_words` and `View(stop_words)`to look at documentation for stop words lexicons (from the `tidytext` package).
 
-We will *remove* stop words using `tidyr::anti_join()`, which will *omit* any words in `stop_words` from `hobbit_tokens`.
+We will *remove* stop words using `tidyr::anti_join()`, which will *omit* any words in `stop_words` from `got_tokens`.
 
 ```{r}
 head(stop_words)
 
-hobbit_words_clean <- hobbit_words %>% 
+got_words_clean <- got_words %>% 
   anti_join(stop_words, by = 'word')
 ```
 Then let's try counting them again: 
 ```{r}
-nonstop_counts <- hobbit_words_clean %>% 
-  count(chapter, word)
+nonstop_counts <- got_words_clean %>% 
+  group_by(main_char, word) %>%
+  summarize(n = n(), .groups = 'drop')
+head(nonstop_counts %>% arrange(desc(n)), 10)
 ```
 
-## Find the top 5 words from each chapter
+## Find the top 5 words from each character
+
+Let's exclude mention of the character's own name!
 
 ```{r}
 top_5_words <- nonstop_counts %>% 
-  group_by(chapter) %>% 
-  arrange(-n) %>% 
-  slice(1:5) %>%
+  filter(word != str_to_lower(main_char)) %>%
+  group_by(main_char) %>% 
+  slice_max(order_by = n, n = 5) %>%
   ungroup()
 
 # Make some graphs: 
 ggplot(data = top_5_words, aes(x = n, y = word)) +
   geom_col(fill = "blue") +
-  facet_wrap(~chapter, scales = "free")
+  facet_wrap(~main_char, scales = "free")
 ```
 
-## Let's make a word cloud for Chapter 1
+## Let's make a word cloud for Eddard Stark
 
 ```{r}
-ch1_top100 <- nonstop_counts %>% 
-  filter(chapter == 1) %>% 
+eddard_top100 <- nonstop_counts %>% 
+  filter(main_char == 'Eddard') %>% 
+  filter(!word %in% c('eddard', 'ned')) %>%
   arrange(-n) %>% 
   slice(1:100)
 ```
 
 ```{r}
-ch1_cloud <- ggplot(data = ch1_top100, aes(label = word)) +
+eddard_cloud <- ggplot(data = eddard_top100, aes(label = word)) +
   geom_text_wordcloud(aes(color = n, size = n), shape = "diamond") +
   scale_size_area(max_size = 6) +
   scale_color_gradientn(colors = c("darkgreen","blue","purple")) +
   theme_minimal()
 
-ch1_cloud
+eddard_cloud
 ```
 
-# Sentiment analysis: The Hobbit
+# Sentiment analysis: Game of Thrones
 
-First, check out the ‘sentiments’ lexicon. From Julia Silge and David Robinson (https://www.tidytextmining.com/sentiment.html):
+First, check out the ‘sentiments’ lexicons. From Julia Silge and David Robinson (https://www.tidytextmining.com/sentiment.html):
 
 “The three general-purpose lexicons are
 
@@ -168,7 +194,7 @@ afinn_lex <- get_sentiments(lexicon = "afinn")
 
 # Let's look at the pretty positive words:
 afinn_pos <- get_sentiments("afinn") %>% 
-  filter(value %in% c(3,4,5))
+  filter(value >= 4)
 
 # Check them out:
 DT::datatable(afinn_pos)
@@ -192,39 +218,39 @@ nrc_lex <- get_sentiments(lexicon = "nrc")
 
 ## Sentiment analysis with bing: 
 
-First, bind words in `hobbit_nonstop_words` to `bing` lexicon:
+First, bind words in `got_nonstop_words` to `bing` lexicon:
+
 ```{r}
-hobbit_bing <- hobbit_words_clean %>% 
+got_bing <- got_words_clean %>% 
   inner_join(bing_lex, by = 'word')
 ```
 
 Let's find some counts of positive vs negative:
 ```{r}
-bing_counts <- hobbit_bing %>% 
-  group_by(chapter, sentiment) %>%
-  summarize(n = n()) %>%
-  ungroup()
+bing_counts <- got_bing %>% 
+  group_by(main_char, sentiment) %>%
+  summarize(n = n(), .groups = 'drop')
 
 # Plot them: 
 ggplot(data = bing_counts, aes(x = sentiment, y = n)) +
   geom_col() +
-  facet_wrap(~chapter)
+  facet_wrap(~main_char)
 ```
 
-Taking the ratio of positive to negative, rather than the total counts per chapter, adjusts for some chapters just being longer or shorter.  Highly negative chapters would have a value between 0 and 1, highly positive could go from 1 to infinity, so that's a problem.  Plotting as log ratio, i.e., $\ln\left(\frac{positive}{negative}\right)$, balances that so a chapter with 10:1 positive:negative would have the same absolute value as a chapter with 1:10 positive:negative.
+Taking the ratio of positive to negative, rather than the total counts per character, adjusts for some characters just having fewer chapters or shorter chapters.  Highly negative chapters would have a value between 0 and 1, highly positive could go from 1 to infinity, so that's a problem.  Plotting as log ratio, i.e., $\ln\left(\frac{positive}{negative}\right)$, balances that so a chapter with 10:1 positive:negative would have the same absolute value as a chapter with 1:10 positive:negative.
 
 We might also need to consider that the overall tone of the author's prose is darker or lighter, so let's find the *overall* log ratio for the entire book, and subtract that out.
 
 ```{r}
 # find log ratio score overall:
-bing_log_ratio_book <- hobbit_bing %>% 
+bing_log_ratio_book <- got_bing %>% 
   summarize(n_pos = sum(sentiment == 'positive'),
             n_neg = sum(sentiment == 'negative'),
             log_ratio = log(n_pos / n_neg))
 
-# Find the log ratio score by chapter: 
-bing_log_ratio_ch <- hobbit_bing %>% 
-  group_by(chapter) %>% 
+# Find the log ratio score by main_char: 
+bing_log_ratio_ch <- got_bing %>% 
+  group_by(main_char) %>% 
   summarize(n_pos = sum(sentiment == 'positive'),
             n_neg = sum(sentiment == 'negative'),
             log_ratio = log(n_pos / n_neg)) %>%
@@ -233,12 +259,12 @@ bing_log_ratio_ch <- hobbit_bing %>%
 
 ggplot(data = bing_log_ratio_ch, 
        aes(x = log_ratio_adjust,
-           y = fct_rev(factor(chapter)),
+           y = fct_rev(factor(main_char)),
            fill = pos_neg)) +
-           # y = fct_rev(as.factor(chapter)))) +
+           # y = fct_rev(as.factor(main_char)))) +
   geom_col() +
   labs(x = 'Adjusted log(positive/negative)',
-       y = 'Chapter number') +
+       y = 'Main character') +
   scale_fill_manual(values = c('pos' = 'slateblue', 'neg' = 'darkred')) +
   theme_minimal() +
   theme(legend.position = 'none')
@@ -247,71 +273,70 @@ ggplot(data = bing_log_ratio_ch,
 
 ## Sentiment analysis with afinn (not run in workshop): 
 
-First, bind words in `hobbit_nonstop_words` to `afinn` lexicon:
+First, bind words in `got_nonstop_words` to `afinn` lexicon:
 ```{r}
-hobbit_afinn <- hobbit_words_clean %>% 
+got_afinn <- got_words_clean %>% 
   inner_join(afinn_lex, by = 'word')
 ```
 
 Let's find some counts (by sentiment ranking):
 ```{r}
-afinn_counts <- hobbit_afinn %>% 
-  group_by(chapter, value) %>%
+afinn_counts <- got_afinn %>% 
+  group_by(main_char, value) %>%
   summarize(n = n())
 
 # Plot them: 
 ggplot(data = afinn_counts, aes(x = value, y = n)) +
   geom_col() +
-  facet_wrap(~chapter)
+  facet_wrap(~main_char)
 
-# Find the mean afinn score by chapter: 
-afinn_means <- hobbit_afinn %>% 
-  group_by(chapter) %>% 
+# Find the mean afinn score by main_char: 
+afinn_means <- got_afinn %>% 
+  group_by(main_char) %>% 
   summarize(mean_afinn = mean(value))
 
 ggplot(data = afinn_means, 
-       aes(x = fct_rev(factor(chapter)),
+       aes(x = fct_rev(factor(main_char)),
            y = mean_afinn)) +
-           # y = fct_rev(as.factor(chapter)))) +
+           # y = fct_rev(as.factor(main_char)))) +
   geom_col() +
-  coord_flip()
+  coord_flip() +
+  labs(y = 'Main character')
   
 ```
 
 
-## Now with NRC lexicon (not run in workshop)
+### Now with NRC lexicon (not run in workshop)
 
-Recall, this assigns words to sentiment bins. Let's bind our hobbit data to the NRC lexicon: 
+Recall, this assigns words to sentiment bins. Let's bind our hp data to the NRC lexicon: 
 
 ```{r}
-hobbit_nrc <- hobbit_words_clean %>% 
+got_nrc <- got_words_clean %>% 
   inner_join(get_sentiments("nrc"))
 ```
-
-Let's find the count of words by chapter and sentiment bin: 
+Let's find the count of words by character and sentiment bin: 
 
 ```{r}
-hobbit_nrc_counts <- hobbit_nrc %>% 
-  group_by(chapter, sentiment) %>%
+got_nrc_counts <- got_nrc %>% 
+  group_by(main_char, sentiment) %>%
   summarize(n = n()) %>%
   ungroup()
 
-ggplot(data = hobbit_nrc_counts, aes(x = n, y = sentiment)) +
+ggplot(data = got_nrc_counts, aes(x = n, y = sentiment)) +
   geom_col() +
-  facet_wrap(~chapter)
+  facet_wrap(~main_char)
 ### perhaps order or color the sentiments by positive/negative
 
-ggplot(data = hobbit_nrc_counts, aes(x = n, 
-                                     y = factor(chapter) %>%
-                                       fct_rev())) +
+ggplot(data = got_nrc_counts, 
+       aes(x = n, y = factor(main_char) %>% fct_rev())) +
   geom_col() +
   facet_wrap(~sentiment) +
-  labs(y = 'chapter')
+  labs(y = 'main_char')
 
 ```
 
 
 
-### NOTE:
+## NOTE:
 
 This is a very simple sentiment analysis.  The `sentimentr` package (https://cran.r-project.org/web/packages/sentimentr/index.html) seems to be able to parse things at the sentence level, accounting for negations etc. (e.g. "I am not having a good day.")

@@ -25,15 +25,15 @@ library(ggwordcloud)
 
 Sentiment analysis is a fairly basic way to get a sense of the mood of a piece of text.  In an eco-data-science sense, we can use sentiment analysis to understand perceptions of topics in environmental policy.  
 
-A good example is "Public Perceptions of Aquaculture: Evaluating Spatiotemporal Patterns of Sentiment around the World" by local celebrities Halley Froehlich, Becca Gentry, and Ben Halpern, in which they examine public perceptions of aquaculture by performing sentiment analyses on newspaper headlines from around the globe and government-solicited public comments on aquaculture policy and development.  This paper is included in the 'pdfs' folder on Github, or available here: http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0169281
+A good example is "Public Perceptions of Aquaculture: Evaluating Spatiotemporal Patterns of Sentiment around the World" by local celebrities Halley Froehlich, Becca Gentry, and Ben Halpern, in which they examine public perceptions of aquaculture by performing sentiment analyses on newspaper headlines from around the globe and government-solicited public comments on aquaculture policy and development.  This paper is included in the 'pdfs' folder on Github, or [available here.](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0169281)
 
-Another popular use of sentiment analysis is to determine the mood of Twitter comments.  One excellent example is an examination of Trump tweets, which noted that tweets from an iPhone and an Android phone were markedly different in tone; the thought was that the Android account (with generally far more negative tweets) was run by Trump while the iPhone (with generally more postive tweets) was tweets from a staffer.  See: http://varianceexplained.org/r/trump-tweets/
+Another popular use of sentiment analysis is to determine the mood of Twitter comments.  One excellent example is an examination of Trump tweets, which noted that tweets from an iPhone and an Android phone were markedly different in tone; the thought was that the Android account (with generally far more negative tweets) was run by Trump while the iPhone (with generally more postive tweets) was tweets from a staffer.  [See here for details.](http://varianceexplained.org/r/trump-tweets/)
 
-# Sentiment analysis example: Harry Potter and the Sorceror's Stone
+# Prep data: Harry Potter and the Sorceror's Stone
 
 ## Read in text from pdf
 
-```{r, cache = TRUE}
+```{r}
 hp_text <- pdf_text(here::here('pdfs', 'harry_potter.pdf'))
 ```
 
@@ -66,7 +66,7 @@ hp_lines <- data.frame(hp_text) %>%
 
 Now, we'll add a new column that contains the Chapter number (so we can use this as a grouping variable later on).
 
-We will use `str_detect()` to look for any cells in "text_full" column that contains the string "CHAPTER", and if it does, the new column will contain that chapter number (by word):
+We will use `str_detect()` to look for any cells in "text_full" column that contains the string "CHAPTER", and if it does, the new column will contain that chapter number (by word).  Let's also turn the chapter number from all caps to title case...
 
 ```{r}
 hp_chapts <- hp_lines %>% 
@@ -74,7 +74,8 @@ hp_chapts <- hp_lines %>%
   mutate(chapter = ifelse(str_detect(text_full, "CHAPTER"), text_full, NA)) %>% 
   fill(chapter, .direction = 'down') %>% 
   mutate(chapter = str_remove_all(chapter, 'CHAPTER ')) %>%
-  mutate(chapter = fct_inorder(chapter))
+  mutate(chapter = str_to_lower(chapter),
+         chapter = fct_inorder(chapter))
 ```
 
 ## Get some word counts by Chapter!
@@ -108,7 +109,9 @@ hp_words_clean <- hp_words %>%
 Then let's try counting them again: 
 ```{r}
 nonstop_counts <- hp_words_clean %>% 
-  count(chapter, word)
+  group_by(chapter, word) %>%
+  summarize(n = n()) %>%
+  ungroup()
 ```
 
 ## Find the top 5 words from each chapter
@@ -145,9 +148,9 @@ ch1_cloud <- ggplot(data = ch1_top100, aes(label = word)) +
 ch1_cloud
 ```
 
-## How do sentiments change over the course of the book? 
+# Sentiment analysis: Harry Potter and the Sorceror's Stone
 
-First, check out the ‘sentiments’ lexicon. From Julia Silge and David Robinson (https://www.tidytextmining.com/sentiment.html):
+First, check out the ‘sentiments’ lexicons. From Julia Silge and David Robinson (https://www.tidytextmining.com/sentiment.html):
 
 “The three general-purpose lexicons are
 
@@ -155,7 +158,7 @@ First, check out the ‘sentiments’ lexicon. From Julia Silge and David Robins
   -  bing from Bing Liu and collaborators, and
   -  nrc (National Research Council Canada) from Saif Mohammad and Peter Turney
 
-All three of these lexicons are based on unigrams, i.e., single words. These lexicons contain many English words and the words are assigned scores for positive/negative sentiment, and also possibly emotions like joy, anger, sadness, and so forth. The nrc lexicon categorizes words in a binary fashion (“yes”/“no”) into categories of positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, and trust. The bing lexicon categorizes words in a binary fashion into positive and negative categories. The AFINN lexicon assigns words with a score that runs between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment. All of this information is tabulated in the sentiments dataset, and tidytext provides a function get_sentiments() to get specific sentiment lexicons without the columns that are not used in that lexicon."
+All three of these lexicons are based on unigrams, i.e., single words. These lexicons contain many English words and the words are assigned scores for positive/negative sentiment, and also possibly emotions like joy, anger, sadness, and so forth. The nrc lexicon categorizes words in a binary fashion (“yes”/“no”) into categories of positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, and trust. The bing lexicon categorizes words in a binary fashion into positive and negative categories. The AFINN lexicon assigns words with a score that runs between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment. All of this information is tabulated in the sentiments dataset, and tidytext provides a function `get_sentiments()` to get specific sentiment lexicons without the columns that are not used in that lexicon."
 
 Let's explore the sentiment lexicons. "bing" included, other lexicons ("afinn", "nrc", "loughran") you'll be prompted to to download.
 
@@ -169,7 +172,7 @@ afinn_lex <- get_sentiments(lexicon = "afinn")
 
 # Let's look at the pretty positive words:
 afinn_pos <- get_sentiments("afinn") %>% 
-  filter(value %in% c(3,4,5))
+  filter(value >= 4)
 
 # Check them out:
 DT::datatable(afinn_pos)
@@ -191,9 +194,10 @@ Now nrc:
 nrc_lex <- get_sentiments(lexicon = "nrc")
 ```
 
-### Sentiment analysis with bing: 
+## Sentiment analysis with bing: 
 
 First, bind words in `hp_nonstop_words` to `bing` lexicon:
+
 ```{r}
 hp_bing <- hp_words_clean %>% 
   inner_join(bing_lex, by = 'word')
@@ -210,6 +214,10 @@ ggplot(data = bing_counts, aes(x = sentiment, y = n)) +
   geom_col() +
   facet_wrap(~chapter)
 ```
+
+Taking the ratio of positive to negative, rather than the total counts per chapter, adjusts for some chapters just being longer or shorter.  Highly negative chapters would have a value between 0 and 1, highly positive could go from 1 to infinity, so that's a problem.  Plotting as log ratio, i.e., $\ln\left(\frac{positive}{negative}\right)$, balances that so a chapter with 10:1 positive:negative would have the same absolute value as a chapter with 1:10 positive:negative.
+
+We might also need to consider that the overall tone of the author's prose is darker or lighter, so let's find the *overall* log ratio for the entire book, and subtract that out.
 
 ```{r}
 # find log ratio score overall:
@@ -241,7 +249,7 @@ ggplot(data = bing_log_ratio_ch,
   
 ```
 
-### Sentiment analysis with afinn (not run in workshop): 
+## Sentiment analysis with afinn (not run in workshop): 
 
 First, bind words in `hp_nonstop_words` to `afinn` lexicon:
 ```{r}
@@ -270,7 +278,8 @@ ggplot(data = afinn_means,
            y = mean_afinn)) +
            # y = fct_rev(as.factor(chapter)))) +
   geom_col() +
-  coord_flip()
+  coord_flip() +
+  labs(y = 'Chapter')
   
 ```
 
@@ -287,7 +296,9 @@ Let's find the count of words by chapter and sentiment bin:
 
 ```{r}
 hp_nrc_counts <- hp_nrc %>% 
-  count(chapter, sentiment)
+  group_by(chapter, sentiment) %>%
+  summarize(n = n()) %>%
+  ungroup()
 
 ggplot(data = hp_nrc_counts, aes(x = n, y = sentiment)) +
   geom_col() +
@@ -295,8 +306,7 @@ ggplot(data = hp_nrc_counts, aes(x = n, y = sentiment)) +
 ### perhaps order or color the sentiments by positive/negative
 
 ggplot(data = hp_nrc_counts, aes(x = n, 
-                                     y = factor(chapter) %>%
-                                       fct_rev())) +
+                                 y = factor(chapter) %>% fct_rev())) +
   geom_col() +
   facet_wrap(~sentiment) +
   labs(y = 'chapter')
