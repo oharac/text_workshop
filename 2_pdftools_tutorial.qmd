@@ -1,24 +1,15 @@
 ---
 title: 'Text analysis workshop: Getting data from PDFs'
-author: "Casey O'Hara, Jessica Couture"
-output: 
-  html_document:
-    toc: false
-    toc_depth: 3
-    toc_float: no
-    number_sections: true
-    theme: cerulean
-    highlight: haddock
-  pdf_document:
-    toc: false
+author: "Casey O'Hara"
+format: 
+  html:
+    toc: true
+    embed-resources: true
+    number-sections: true
+execute:
+  warning: false
+  message: false
 ---
-
-``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
-
-knitr::opts_chunk$set(fig.width = 6, fig.height = 4, fig.path = 'Figs/',
-                      echo = TRUE, message = FALSE, warning = FALSE)
-
-```
 
 # Overview
 
@@ -78,8 +69,17 @@ smith_df <- data.frame(text = smith_text) %>%
 
 Let's look at the PDF, specifically we want to get the data in the table on page 8 of the document. More specifically, the table data is in lines 8 to 18 on page 8.  This is a table comparing the number of active urchin divers to the number of patches in which they dove for urchins, from 1988 to 1999.
 
+```{r}
+smith_df %>%
+  filter(page == 8 & line <= 25 & line >= 7) %>%
+  pull(text_sep)
+```
+
+
 * The column headings are annoyingly just years, and R doesn't like numbers as column names, so we'll rename them as 'y####' for year.
 * Break up the columns separated by (probably tabs but we can just use) spaces.  We'll use the `tidyr::separate` function to separate into columns by spaces.  Note, one space and multiple spaces should count the same way - how to do that in regex?
+
+## extract table (not run in workshop)
 
 ``` {r}
 ### We want to extract data from the table on page 8

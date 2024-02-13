@@ -197,7 +197,58 @@ Now nrc:
 nrc_lex <- get_sentiments(lexicon = "nrc")
 ```
 
-### Sentiment analysis with afinn: 
+### Sentiment analysis with bing: 
+
+First, bind words in `hobbit_nonstop_words` to `bing` lexicon:
+```{r}
+hobbit_bing <- hobbit_words_clean %>% 
+  inner_join(bing_lex, by = 'word')
+```
+
+Let's find some counts of positive vs negative:
+```{r}
+bing_counts <- hobbit_bing %>% 
+  # group_by(chapter, sentiment) %>%
+  # summarize(n = n())
+  count(chapter, sentiment)
+
+# Plot them: 
+ggplot(data = bing_counts, aes(x = sentiment, y = n)) +
+  geom_col() +
+  facet_wrap(~chapter)
+```
+
+```{r}
+# find log ratio score overall:
+bing_log_ratio_book <- hobbit_bing %>% 
+  summarize(n_pos = sum(sentiment == 'positive'),
+            n_neg = sum(sentiment == 'negative'),
+            log_ratio = log(n_pos / n_neg))
+
+# Find the log ratio score by chapter: 
+bing_log_ratio_ch <- hobbit_bing %>% 
+  group_by(chapter) %>% 
+  summarize(n_pos = sum(sentiment == 'positive'),
+            n_neg = sum(sentiment == 'negative'),
+            log_ratio = log(n_pos / n_neg)) %>%
+  mutate(log_ratio_adjust = log_ratio - bing_log_ratio_book$log_ratio) %>%
+  mutate(pos_neg = ifelse(log_ratio_adjust > 0, 'pos', 'neg'))
+
+ggplot(data = bing_log_ratio_ch, 
+       aes(x = log_ratio_adjust,
+           y = fct_rev(factor(chapter)),
+           fill = pos_neg)) +
+           # y = fct_rev(as.factor(chapter)))) +
+  geom_col() +
+  labs(x = 'Adjusted log(positive/negative)',
+       y = 'Chapter number') +
+  scale_fill_manual(values = c('pos' = 'slateblue', 'neg' = 'darkred')) +
+  theme_minimal() +
+  theme(legend.position = 'none')
+  
+```
+
+### Sentiment analysis with afinn (not run in workshop): 
 
 First, bind words in `hobbit_nonstop_words` to `afinn` lexicon:
 ```{r}
@@ -231,56 +282,7 @@ ggplot(data = afinn_means,
 ```
 
 
-### Sentiment analysis with bing: 
-
-First, bind words in `hobbit_nonstop_words` to `bing` lexicon:
-```{r}
-hobbit_bing <- hobbit_words_clean %>% 
-  inner_join(bing_lex, by = 'word')
-```
-
-Let's find some counts of positive vs negative:
-```{r}
-bing_counts <- hobbit_bing %>% 
-  # group_by(chapter, sentiment) %>%
-  # summarize(n = n())
-  count(chapter, sentiment)
-
-# Plot them: 
-ggplot(data = bing_counts, aes(x = sentiment, y = n)) +
-  geom_col() +
-  facet_wrap(~chapter)
-
-# find log ratio score overall:
-bing_log_ratio_book <- hobbit_bing %>% 
-  summarize(n_pos = sum(sentiment == 'positive'),
-            n_neg = sum(sentiment == 'negative'),
-            log_ratio = log(n_pos / n_neg))
-
-# Find the log ratio score by chapter: 
-bing_log_ratio_ch <- hobbit_bing %>% 
-  group_by(chapter) %>% 
-  summarize(n_pos = sum(sentiment == 'positive'),
-            n_neg = sum(sentiment == 'negative'),
-            log_ratio = log(n_pos / n_neg)) %>%
-  mutate(log_ratio_adjust = log_ratio - bing_log_ratio_book$log_ratio) %>%
-  mutate(pos_neg = ifelse(log_ratio_adjust > 0, 'pos', 'neg'))
-
-ggplot(data = bing_log_ratio_ch, 
-       aes(x = log_ratio_adjust,
-           y = fct_rev(factor(chapter)),
-           fill = pos_neg)) +
-           # y = fct_rev(as.factor(chapter)))) +
-  geom_col() +
-  labs(x = 'Adjusted log(positive/negative)',
-       y = 'Chapter number') +
-  scale_fill_manual(values = c('pos' = 'slateblue', 'neg' = 'darkred')) +
-  theme_minimal() +
-  theme(legend.position = 'none')
-  
-```
-
-### Now with NRC lexicon
+### Now with NRC lexicon (not run in workshop)
 
 Recall, this assigns words to sentiment bins. Let's bind our hobbit data to the NRC lexicon: 
 
@@ -309,157 +311,7 @@ ggplot(data = hobbit_nrc_counts, aes(x = n,
 ```
 
 
-## Let's make a word cloud for Chapter 1
-
-```{r}
-ch1_top100 <- nonstop_counts %>% 
-  filter(chapter == 1) %>% 
-  arrange(-n) %>% 
-  slice(1:100)
-```
-
-```{r}
-ch1_cloud <- ggplot(data = ch1_top100, aes(label = word)) +
-  geom_text_wordcloud(aes(color = n, size = n), shape = "diamond") +
-  scale_size_area(max_size = 6) +
-  scale_color_gradientn(colors = c("darkgreen","blue","purple")) +
-  theme_minimal()
-
-ch1_cloud
-```
-
-## How do sentiments change over the course of the book? 
-
-First, check out the ‘sentiments’ lexicon. From Julia Silge and David Robinson (https://www.tidytextmining.com/sentiment.html):
-
-“The three general-purpose lexicons are
-
-  -  AFINN from Finn Årup Nielsen,
-  -  bing from Bing Liu and collaborators, and
-  -  nrc (National Research Council Canada) from Saif Mohammad and Peter Turney
-
-All three of these lexicons are based on unigrams, i.e., single words. These lexicons contain many English words and the words are assigned scores for positive/negative sentiment, and also possibly emotions like joy, anger, sadness, and so forth. The nrc lexicon categorizes words in a binary fashion (“yes”/“no”) into categories of positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, and trust. The bing lexicon categorizes words in a binary fashion into positive and negative categories. The AFINN lexicon assigns words with a score that runs between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment. All of this information is tabulated in the sentiments dataset, and tidytext provides a function get_sentiments() to get specific sentiment lexicons without the columns that are not used in that lexicon."
-
-Let's explore the sentiment lexicons. "bing" included, other lexicons ("afinn", "nrc", "loughran") you'll be prompted to to download.
-
-**WARNING:** These collections include the most offensive words you can think of. 
-
-"afinn": Words ranked from -5 (very negative) to +5 (very positive)
-
-```{r}
-afinn_lex <- get_sentiments(lexicon = "afinn")
-### you may be prompted to download an updated lexicon - say yes!
-
-# Let's look at the pretty positive words:
-afinn_pos <- get_sentiments("afinn") %>% 
-  filter(value %in% c(3,4,5))
-
-# Check them out:
-DT::datatable(afinn_pos)
-```
-
-For comparison, check out the bing lexicon: 
-
-```{r}
-bing_lex <- get_sentiments(lexicon = "bing")
-```
-
-And the nrc lexicon:https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm
-Includes bins for 8 emotions (anger, anticipation, disgust, fear, joy, sadness, surprise, trust) and positive / negative. 
-
-**Citation for NRC lexicon**: Crowdsourcing a Word-Emotion Association Lexicon, Saif Mohammad and Peter Turney, Computational Intelligence, 29 (3), 436-465, 2013.
-
-Now nrc:
-```{r}
-nrc_lex <- get_sentiments(lexicon = "nrc")
-```
-
-The `tidytext::get_sentiments()` function returns a dataframe of words and their associated sentiments.  There are four built-in as of now; you could also adapt or create your own sentiment library.  Why would you create your own sentiment library?  In particular contexts, words may have particular meanings with sentiment implications that are different from the common-use meanings - e.g. "bait" might show up in a paper on fisheries and holds a neutral meaning, but in a non-fisheries context, to "bait" someone is seen as a negative action.  Or perhaps you want to analyze text/tweets/articles with a particular coding scheme in mind to focus on specific words important to your research.
-
-``` {r} 
-sentiments_b <- get_sentiments('bing')
-# sentiments_a <- get_sentiments('afinn')
-# sentiments_n <- get_sentiments('nrc')
-# sentiments_l <- get_sentiments('loughran')
-
-```
-
-The Bing sentiment library is a basic one (just "positive"/"negative") so we'll go with that, but consider the others as well in terms of advantages/disadvantages for your particular needs.
-
-## Perform the sentiment analysis
-
-Here we attach sentiment scores by word (using `dplyr::inner_join`) to connect our text and the sentiment lexicon.
-
-``` {r}
-
-got_text <- read_csv('data/got_text.csv')
-
-text_words <- got_text %>%
-  tidytext::unnest_tokens(output = word, input = text, token = 'words') %>%
-  anti_join(stop_words, by = 'word') %>%
-  inner_join(sentiments_b, by = 'word')
-
-# text_ngrams <- got_text %>%
-#   filter(!str_detect(tolower(text), 'table of contents')) %>%
-#   filter(text != ch) %>%
-#   group_by(ch, ch_num) %>%
-#   summarize(text = paste(text, collapse = ' ')) %>%
-#   tidytext::unnest_tokens(output = word, input = text, token = 'ngrams', n = 3)
-
-```
-
-For each chapter, add up the positives and negatives (using `dplyr::count()` is handy here), spread them out into columns and take the difference (number of positives - number of negatives).  
-
-Subtracting the overall mean difference from each chapter's difference will center the scores, essentially to account for a writer's general tone.  _A Game of Thrones_ is overall pretty dark, so the average sentiment will be skewed negative... 
-
-Another common adjustment method is to take the log ratio of positive to negative words; this also offsets differences in word count due to longer/shorter chapters:
-
-$$\log \frac{\text{positive words}}{\text{negative words}}$$
-
-Equal ratio results in a score of zero; a greater frequency of positive than negative results in a positive score and vice versa.
-
-We can also add in a line to order the characters from worst outcome to best outcome.  To do so, we turn it into a factor with levels based on the *reverse* order of the raw score (or offset score).
-
-```{r}
-
-text_scores <- text_words %>%
-  count(sentiment, ch) %>%
-  spread(sentiment, n) %>%
-  mutate(raw_score    = positive - negative,
-         offset       = mean(positive - negative),
-         offset_score = (positive - negative) - offset,
-         log_ratio    = log(positive / negative)) %>%
-  arrange(desc(raw_score)) %>%
-  mutate(ch = fct_inorder(ch))
-
-```
 
 ### NOTE:
 
 This is a very simple sentiment analysis.  The `sentimentr` package (https://cran.r-project.org/web/packages/sentimentr/index.html) seems to be able to parse things at the sentence level, accounting for negations etc. (e.g. "I am not having a good day.")
-
-## Time permitting: plot it!
-
-Spoiler alerts!
-
-``` {r}
-
-ggplot(text_scores, aes(x = ch)) +
-  theme_classic() +
-  geom_bar(aes(y = raw_score), stat = 'identity', fill = 'slateblue3') +
-  geom_bar(aes(y = offset_score), stat = 'identity', fill = 'red4') +
-  geom_hline(yintercept = text_scores$offset[1], linetype = 'dashed', size = .5) +
-  coord_flip() +
-  theme(axis.title.y = element_blank()) +
-  labs(title = 'Sentiment analysis: Game of Thrones, by character',
-       y = 'Sentiment score')
-
-ggplot(text_scores, aes(x = ch)) +
-  theme_classic() +
-  geom_bar(aes(y = log_ratio), stat = 'identity', fill = 'red4') +
-  coord_flip() +
-  theme(axis.title.y = element_blank()) +
-  labs(title = 'Sentiment analysis: Game of Thrones, by character',
-       y = 'Log(pos count / neg count)')
-
-```

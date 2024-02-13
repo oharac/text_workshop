@@ -1,24 +1,15 @@
 ---
 title: 'Text analysis workshop: stringr package and regex'
 author: "Casey O'Hara"
-output: 
-  pdf_document:
-    toc: false
-  html_document:
-    toc: false
-    toc_depth: 3
-    toc_float: no
-    number_sections: true
-    theme: cerulean
-    highlight: haddock
+format: 
+  html:
+    toc: true
+    number-sections: true
+    embed-resources: true
+execute:
+  warning: false
+  message: false
 ---
-
-``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
-
-knitr::opts_chunk$set(fig.width = 6, fig.height = 4, fig.path = 'Figs/',
-                      echo = TRUE, message = FALSE, warning = FALSE)
-
-```
 
 # Overview
 
@@ -61,7 +52,7 @@ coral_habs_raw$habitat[1:2]
 
 In pseudocode, we can think of a process as:
 
-```
+```r
 coral_habs <- coral_habs_raw %>%
   split into individual sentences %>%
   keep the sentences with numbers in them %>%
@@ -81,8 +72,8 @@ Here we'll play a little with some basic stringr functions, and pattern vs. vect
 
 ``` {r}
 x <- "Everybody's got something to hide except for me and my monkey"
-tools::toTitleCase(x)
-tolower(x)
+stringr::str_to_title(x)
+str_to_lower(x)
 
 str_split(x, 'hide'); str_split(x, 't')
 
@@ -255,9 +246,11 @@ coral_threats <- coral_narrs %>%
     ### NOTE: ^ outside brackets is start of a string, but inside brackets it's a negation
 ```
 
+# And even more (not run in workshop)
+
 ## cleaning up column names in a data frame
 
-Spaces and punctuation in column names can be a hassle, but often when reading in .csvs and Excel files, column names include extra stuff.  Use regex and `str_replace` to get rid of these!
+Spaces and punctuation in column names can be a hassle, but often when reading in .csvs and Excel files, column names include extra stuff.  Use regex and `str_replace` to get rid of these! (or `janitor::clean_names()`...)
 
 ``` {r}
 crappy_colname <- 'Per-capita income ($US) (2015 dollars)'
